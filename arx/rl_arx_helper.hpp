@@ -117,8 +117,12 @@ public:
 class rl_arx_database
 {
 public:
-	static Acad::ErrorStatus append(AcDbObjectId &id, AcDbEntity *entity, AcDbDatabase *db)
+	static Acad::ErrorStatus append(AcDbObjectId &id, AcDbEntity *entity, AcDbDatabase *db = NULL)
 	{
+		if (db == NULL)
+		{
+			db = acdbCurDwg();
+		}
 		AcDbBlockTable *blkTable = NULL;
 		AcDbBlockTableRecord *blkTblRecord = NULL;
 
@@ -136,13 +140,13 @@ public:
 		return es;
 	}
 
-	static Acad::ErrorStatus append(AcDbEntity *entity, AcDbDatabase *db)
+	static Acad::ErrorStatus append(AcDbEntity *entity, AcDbDatabase *db = NULL)
 	{
 		AcDbObjectId id;
 		return append(id, entity, db);
 	}
 
-	static Acad::ErrorStatus append_and_close(AcDbEntity *entity, AcDbDatabase *db)
+	static Acad::ErrorStatus append_and_close(AcDbEntity *entity, AcDbDatabase *db = NULL)
 	{
 		Acad::ErrorStatus es = append(entity,db);
 		if (es != Acad::eOk)
