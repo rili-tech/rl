@@ -33,7 +33,7 @@ struct rlTolerance
 /** 
  * @note - ãÐÖµÎªrlTolerance::equal_point()
  */
-struct rl_double_sort1 
+struct rl_double_sort
 {
 	bool operator()(double v1, double v2) const
 	{
