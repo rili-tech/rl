@@ -2,6 +2,7 @@
 
 
 #define rlPi 3.1415926535897932384626433832795
+#define EPRES 1e-6
 typedef unsigned __int64 rlId;
 
 #ifndef SAFE_DELETE
