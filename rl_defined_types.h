@@ -1,7 +1,8 @@
 #pragma once
-
+#include <math.h>
 
 #define rlPi 3.1415926535897932384626433832795
+#define EPRES	1e-6
 typedef unsigned __int64 rlId;
 
 #ifndef SAFE_DELETE
@@ -41,6 +42,73 @@ struct rl_double_sort
 			return false;
 
 		if (v1 < v2)
+			return true;
+
+		return false;
+	}
+};
+
+struct scAcGeVector2d
+{
+	scAcGeVector2d()
+	{
+		m_vecLength = AcGeVector2d(0, 0);
+	}
+	scAcGeVector2d(AcGeVector2d vec)
+	{
+		m_vecLength = vec;
+	}
+
+	scAcGeVector2d(const scAcGeVector2d &other)
+	{
+		*this = other;
+	}
+
+	const scAcGeVector2d& operator = (const scAcGeVector2d &other)
+	{
+		m_vecLength = other.m_vecLength;
+		return *this;
+	}
+
+	const scAcGeVector2d& operator = (const AcGeVector2d &other)
+	{
+		m_vecLength = other;
+		return *this;
+	}
+
+	virtual bool operator < (const scAcGeVector2d&other)
+	{
+		if (m_vecLength.isEqualTo(other.m_vecLength))
+		{
+			return m_vecLength.length() < other.m_vecLength.length();
+		}
+		return false;
+	}
+	bool operator == (const scAcGeVector2d& other) const
+	{
+		return m_vecLength.isEqualTo(other.m_vecLength);
+	}
+	AcGeVector2d m_vecLength;
+};
+
+struct rl_scAcGeVector2d_sort
+{
+	bool operator()(scAcGeVector2d v1, scAcGeVector2d v2) const
+	{
+		if (fabs(v1.m_vecLength.length() - v2.m_vecLength.length()) < rlTolerance::equal_point())
+		{
+			if (v1.m_vecLength.isEqualTo(v2.m_vecLength))
+				return false;
+			else
+			{
+				if (fabs(v1.m_vecLength.angle() - v2.m_vecLength.angle()) < rlTolerance::equal_point())
+					return false;
+
+				if (v1.m_vecLength.angle() < v2.m_vecLength.angle())
+					return true;
+			}
+		}
+		if (v1.m_vecLength.length() <  v2.m_vecLength.length())
 			return true;
 
 		return false;
