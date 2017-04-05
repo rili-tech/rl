@@ -58,6 +58,7 @@ namespace fda
                 {"AutoCAD 2013English version", new AcadVersion("AutoCAD 2013English version", "R19.0", "B001:409")},
                 {"AutoCAD 2014Simplified Chinese version", new AcadVersion("AutoCAD 2014Simplified Chinese version", "R19.1", "D001:804")},
                 {"AAutoCAD 2014English version", new AcadVersion("AutoCAD 2014English version", "R19.1", "D001:409")},
+                {"AutoCAD 2016简体中文版", new AcadVersion("AutoCAD 2016简体中文版", "R20.1", "F001:804")},
             };
     }
 }
