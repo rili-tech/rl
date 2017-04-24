@@ -688,7 +688,7 @@ namespace rlArxCommonHelp
 			AcGeVector3d vec = ptTmpArry[i + 1] - ptTmpArry[i];
 			vec = vec.rotateBy(dRotateAngle, vecNormal);
 			AcGePoint3d ptMind = middle(ptTmpArry[i + 1], ptTmpArry[i]);
-			ptMind += vec.normal() * 2.5;
+			ptMind += vec.normal() * (tol.equalPoint() + 0.1);
 			int iType = PtOnArea(ptTmpArry, ptMind,FALSE,tol);
 			if (iType == 0)
 				continue;
@@ -700,4 +700,235 @@ namespace rlArxCommonHelp
 		}
 		return bIsClockwise;
 	}
+
+	//将点往外扩dDist的距离
+	static void getExtendPtArry(double& dRotateAngle, AcGePoint3dArray& ptResArry, double dDist)
+	{
+		AcGePoint3dArray ptTmpArry = ptResArry;
+		rlArxCommonHelp::mergePolyline(ptTmpArry);
+		if (fabs(dDist) < EPRES || ptTmpArry.length() < 3)
+			return;
+
+		AcGeVector3d vec1 = (ptTmpArry[1] - ptTmpArry[0]).normal();
+		AcGeVector3d vec2 = (ptTmpArry[2] - ptTmpArry[1]).normal();
+		AcGeVector3d vecNorm = vec1.crossProduct(vec2).normal();
+
+		ptResArry.removeAll();
+		dRotateAngle = -rlPi / 2.0;
+		BOOL bIsLoop = ptTmpArry.first().isEqualTo(ptTmpArry.last(), rlArxCommonHelp::getPrjGeTol());
+		if (bIsLoop)
+			ptTmpArry.removeLast();
+
+		AcGePoint3d ptTmp = rlArxCommonHelp::middle(ptTmpArry[1], ptTmpArry[0]);
+		AcGeVector3d vecPre = vec1.rotateBy(dRotateAngle, vecNorm);
+		ptTmp = ptTmp + vecPre.normal() * (AcGeContext::gTol.equalPoint() + 0.1);
+
+		int bOn = rlArxCommonHelp::PtOnArea(ptTmpArry, ptTmp, FALSE, AcGeContext::gTol);
+		if (bOn == 1 && dDist > EPRES)
+			dRotateAngle = -dRotateAngle;
+		else if (bOn != 1 && dDist < EPRES)
+			dRotateAngle = -dRotateAngle;
+
+		dDist = fabs(dDist);
+		int nLen = ptTmpArry.length();
+		for (int i = 0; i < nLen; i++)
+		{
+			int iStartIndex = i - 1;
+			int iEndIndex = i + 1;
+
+			if (i == 0)
+				iStartIndex = nLen - 1;
+			if (i == nLen - 1)
+				iEndIndex = 0;
+
+			if (iStartIndex == iEndIndex)
+				continue;
+
+			AcGePoint3d pt = ptTmpArry[i];
+			AcGePoint3d ptStart = ptTmpArry[iStartIndex];
+			AcGePoint3d ptEnd = ptTmpArry[iEndIndex];
+			AcGeVector3d vecX = pt - ptStart;
+			AcGeVector3d vecY = ptEnd - pt;
+			vecX = vecX.rotateBy(dRotateAngle, vecNorm).normal();
+			vecY = vecY.rotateBy(dRotateAngle, vecNorm).normal();
+			AcGeLine3d line1(pt + vecX*dDist, pt - ptStart);
+			AcGeLine3d line2(pt + vecY*dDist, ptEnd - pt);
+			line1.intersectWith(line2, pt);
+			ptResArry.append(pt);
+		}
+		if (ptResArry.isEmpty())
+			ptResArry = ptTmpArry;
+
+		if (bIsLoop&&!ptResArry.isEmpty())
+			ptResArry.append(ptResArry.first());
+
+		return;
+	}
+
+	static void getExtendPtArry(AcGePoint3dArray& ptResArry, double dDist)
+	{
+		AcGePoint3dArray ptTmpArry = ptResArry;
+		rlArxCommonHelp::mergePolyline(ptTmpArry);
+		if (fabs(dDist) < EPRES || ptTmpArry.length() < 3)
+			return;
+
+		AcGeVector3d vec1 = (ptTmpArry[1] - ptTmpArry[0]).normal();
+		AcGeVector3d vec2 = (ptTmpArry[2] - ptTmpArry[1]).normal();
+		AcGeVector3d vecNorm = vec1.crossProduct(vec2).normal();
+
+		ptResArry.removeAll();
+		double dRotateAngle = -rlPi / 2.0;
+		BOOL bIsLoop = ptTmpArry.first().isEqualTo(ptTmpArry.last(), rlArxCommonHelp::getPrjGeTol());
+		if (bIsLoop)
+			ptTmpArry.removeLast();
+
+		AcGePoint3d ptTmp = rlArxCommonHelp::middle(ptTmpArry[1], ptTmpArry[0]);
+		AcGeVector3d vecPre = vec1.rotateBy(dRotateAngle, vecNorm);
+		ptTmp = ptTmp + vecPre.normal() *  (AcGeContext::gTol.equalPoint() + 0.1);
+
+		int bOn = rlArxCommonHelp::PtOnArea(ptTmpArry, ptTmp, FALSE, AcGeContext::gTol);
+		if (bOn == 1 && dDist > EPRES)
+			dRotateAngle = -dRotateAngle;
+		else if (bOn != 1 && dDist < EPRES)
+			dRotateAngle = -dRotateAngle;
+
+		dDist = fabs(dDist);
+		int nLen = ptTmpArry.length();
+		for (int i = 0; i < nLen; i++)
+		{
+			int iStartIndex = i - 1;
+			int iEndIndex = i + 1;
+
+			if (i == 0)
+				iStartIndex = nLen - 1;
+			if (i == nLen - 1)
+				iEndIndex = 0;
+
+			if (iStartIndex == iEndIndex)
+				continue;
+
+			AcGePoint3d pt = ptTmpArry[i];
+			AcGePoint3d ptStart = ptTmpArry[iStartIndex];
+			AcGePoint3d ptEnd = ptTmpArry[iEndIndex];
+			AcGeVector3d vecX = pt - ptStart;
+			AcGeVector3d vecY = ptEnd - pt;
+			vecX = vecX.rotateBy(dRotateAngle, vecNorm).normal();
+			vecY = vecY.rotateBy(dRotateAngle, vecNorm).normal();
+			AcGeLine3d line1(pt + vecX*dDist, pt - ptStart);
+			AcGeLine3d line2(pt + vecY*dDist, ptEnd - pt);
+			line1.intersectWith(line2, pt);
+			ptResArry.append(pt);
+		}
+		if (ptResArry.isEmpty())
+			ptResArry = ptTmpArry;
+
+		if (bIsLoop&&!ptResArry.isEmpty())
+			ptResArry.append(ptResArry.first());
+
+		return;
+	}
+
+	static AcDb3dSolid* get3dSolid(const AcGePoint3dArray& ptArry, AcGePoint3dArray ptPathArry,
+		double dFacebAccer = 0.0, double dPathAccer = 0.0)
+	{
+		double dAngle = 0.0;
+		AcGePoint3dArray ptResArry = ptArry;
+		getExtendPtArry(dAngle, ptResArry, dFacebAccer);
+
+		if (fabs(dPathAccer) > EPRES)
+		{
+			AcGeMatrix3d mat;
+			AcGeVector3d vecNorm = (ptPathArry[0] - ptPathArry[1]).normal();
+			mat.setToTranslation(vecNorm*dPathAccer);
+			rlArxCommonHelp::transPtsFromMatrix3d(ptResArry, mat);
+
+			ptPathArry.first() += vecNorm.normal()*dPathAccer;
+			ptPathArry.last() += (ptPathArry.last() - ptPathArry[ptPathArry.length() - 2]).normal()*dPathAccer;
+		}
+
+		if (ptResArry.length() < 3 || ptPathArry.length() < 2)
+			return NULL;
+
+		AcDbVoidPtrArray arCurves;
+		AcDb3dPolyline * pPolyLine = new AcDb3dPolyline(AcDb::k3dSimplePoly, ptResArry, Adesk::kTrue);
+		arCurves.append(pPolyLine);
+
+		AcDbVoidPtrArray arRegions;
+		AcDbRegion::createFromCurves(arCurves, arRegions);
+		if (arRegions.length() == 0)
+		{
+			rlArxCommonHelp::releaseVoidPtr(arCurves);
+			rlArxCommonHelp::releaseVoidPtr(arRegions);
+			return NULL;
+		}
+
+		AcDb3dPolyline * pPathPolyLine = new AcDb3dPolyline(AcDb::k3dSimplePoly, ptPathArry, Adesk::kFalse);
+		arCurves.append(pPathPolyLine);
+		AcDbRegion * pReg = (AcDbRegion*)arRegions.at(0);
+		AcDb3dSolid * pSolid = new AcDb3dSolid;
+		Acad::ErrorStatus es;
+		es = pSolid->extrudeAlongPath(pReg, pPathPolyLine);
+		if (es != Acad::eOk)
+			SAFE_DELETE(pSolid);
+
+		rlArxCommonHelp::releaseVoidPtr(arCurves);
+		rlArxCommonHelp::releaseVoidPtr(arRegions);
+		return pSolid;
+	}
+
+		static AcDb3dSolid* get3dSolid(const AcGePoint3dArray& ptArry1, const AcGePoint3dArray& ptArry2,
+			AcGePoint3dArray ptPathArry, double dFacebAccer = 0.0, double dPathAccer = 0.0)
+	{
+		double dAngle = 0.0;
+		AcGePoint3dArray ptResArry1 = ptArry1;
+		rlArxCommonHelp::getExtendPtArry(dAngle, ptResArry1, dFacebAccer);
+		AcGePoint3dArray ptResArry2 = ptArry2;
+		rlArxCommonHelp::getExtendPtArry(dAngle, ptResArry2, dFacebAccer);
+
+		if (ptResArry1.length() < 3 || ptResArry1.length() < 3 || ptPathArry.length() < 2)
+			return NULL;
+
+		if (fabs(dPathAccer) > EPRES)
+		{
+			AcGeMatrix3d mat1;
+			AcGeVector3d vecNorm = (ptPathArry[0] - ptPathArry[1]).normal();
+			ptPathArry.first() += vecNorm*dPathAccer;
+			mat1.setToTranslation(vecNorm*dPathAccer);
+			rlArxCommonHelp::transPtsFromMatrix3d(ptResArry1, mat1);
+
+			AcGeMatrix3d mat2;
+			vecNorm = (ptPathArry.last() - ptPathArry[ptPathArry.length() - 2]).normal();
+			ptPathArry.last() += vecNorm*dPathAccer;
+			mat2.setToTranslation(vecNorm*dPathAccer);
+			rlArxCommonHelp::transPtsFromMatrix3d(ptResArry2, mat2);
+		}
+
+		AcDb3dPolylineVertex* pPLineVetex = NULL;
+		AcDb3dPolyline*       pPolyLine1 = new AcDb3dPolyline(AcDb::k3dSimplePoly, ptResArry1, Adesk::kTrue);
+		AcDb3dPolyline*       pPolyLine2 = new AcDb3dPolyline(AcDb::k3dSimplePoly, ptResArry2, Adesk::kTrue);
+
+		AcArray<AcDbEntity*>arSecs;
+		arSecs.append(pPolyLine1);
+		arSecs.append(pPolyLine2);
+
+		AcDb3dPolyline * pPathPolyLine = new AcDb3dPolyline(AcDb::k3dSimplePoly, ptPathArry, Adesk::kFalse);
+
+		AcArray<AcDbEntity*>arGuits;
+		AcDbLoftOptions option;
+		//option.setNormal(AcDbLoftOptions::kAllNormal);
+		Acad::ErrorStatus es;
+		AcDb3dSolid * pSolid = new AcDb3dSolid;
+		//放样
+		es = pSolid->createLoftedSolid(arSecs, arGuits, pPathPolyLine, option);
+		arSecs.append(pPathPolyLine);
+
+		if (es != Acad::eOk)
+			SAFE_DELETE(pSolid);
+
+		for (int i = 0; i < arSecs.length(); ++i)
+			SAFE_DELETE(arSecs[i]);
+
+		return pSolid;
+	}
+
 }
