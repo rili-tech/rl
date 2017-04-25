@@ -473,97 +473,150 @@ namespace rlArxCommonHelp
 		return !ptFaceArrys.isEmpty();
 	}
 
-	//合并共线点
-	static void mergePolyline(AcGePoint3dArray& ptArry, const AcGeTol& tol = getPrjGeTol())
+	static void mergeOnLines(AcArray<AcGeLineSeg3d>& ptOnZarry, const AcGeTol& tol = getPrjGeTol())
 	{
-		AcGePoint3dArray vertices;
-		int nLen = ptArry.length();
-		if (nLen < 3)
-			return;
+		AcArray<AcGeLineSeg3d> ptOnResZarry;
 
-		BOOL bIsoLoop = ptArry.first().isEqualTo(ptArry.last(), tol);
-		if (bIsoLoop)
-		{
-			AcGePoint3d pt1 = ptArry[nLen - 1];
-			AcGePoint3d pt2 = ptArry[nLen - 2];
-			AcGeVector3d vecNormal = (pt2 - pt1).normal();
-			while (ptArry.length() > 1)
-			{
-				pt2 = ptArry[1];
-				if (pt2.isEqualTo(pt1, tol))
-				{
-					ptArry.removeFirst();
-					ptArry.last() = ptArry.first();
-					continue;
-				}
-				AcGeVector3d vecNormalTmp = (pt2 - pt1).normal();
-				if (vecNormalTmp.isParallelTo(vecNormal, tol))
-				{
-					ptArry.removeFirst();
-					ptArry.last() = ptArry.first();
-					continue;
-				}
-				break;
-			}
-		}
-		if (ptArry.length() < 2)
-			return;
-		if (bIsoLoop)
-			ptArry.removeLast();
 		while (true)
 		{
+			int nLen = ptOnZarry.length();
 			BOOL bRemoveData = FALSE;
-			for (int i = 0; i < ptArry.length(); i++)
+			for (int i = 0; i < nLen; i++)
 			{
-				if (i == nLen)
-					i = 0;
-
-				int iStartIndex = i - 1;
-				if (iStartIndex < 0)
-					iStartIndex = ptArry.length() - 1;
-
-				int iEndIndex = i + 1;
-				if (iEndIndex == ptArry.length())
-					iEndIndex = 0;
-
-				AcGePoint3d pt1 = ptArry[iStartIndex];
-				AcGePoint3d pt2 = ptArry[i];
-				AcGePoint3d pt3 = ptArry[iEndIndex];
-
-				AcGeVector3d vec1 = (pt2 - pt1).normal();
-				AcGeVector3d vec2 = (pt3 - pt2).normal();
-				double dDist1 = pt2.distanceTo(pt1);
-				double dDist2 = pt2.distanceTo(pt3);
-
-
-				if (fabs(dDist1) < tol.equalPoint())
+				AcGePoint3d ptStart1 = ptOnZarry[i].startPoint();
+				AcGePoint3d ptEnd1 = ptOnZarry[i].endPoint();
+				AcGeLineSeg3d line3d1(ptStart1, ptEnd1);
+				AcGeVector3d vec1 = ptEnd1 - ptStart1;
+				if (vec1.isZeroLength(tol))
 				{
-					ptArry.removeAt(i);
-					bRemoveData = TRUE;
-				}
-				else if (fabs(dDist2) < tol.equalPoint())
-				{
-					ptArry.removeAt(iEndIndex);
-					bRemoveData = TRUE;
-				}
-
-				else if (vec1.isEqualTo(vec2, tol))
-				{
-					ptArry.removeAt(i);
+					ptOnZarry.removeAt(i);
 					bRemoveData = TRUE;
 					break;
 				}
-				else if (vec1.isParallelTo(vec2, tol))
+				for (int j = i + 1; j < nLen; j++)
 				{
-					if (fabs(dDist1 - dDist2) < EPRES || dDist1 > dDist2)
-						ptArry.removeAt(iEndIndex);
-					else
+					AcGePoint3d ptStart2 = ptOnZarry[j].startPoint();
+					AcGePoint3d ptEnd2 = ptOnZarry[j].endPoint();
+					AcGeLineSeg3d line3d2(ptStart2, ptEnd2);
+					AcGeVector3d vec2 = ptEnd2 - ptStart2;
+					if (vec1.isZeroLength(tol))
 					{
-						ptArry[iStartIndex] = ptArry[iEndIndex];
-						ptArry.removeAt(iEndIndex);
+						ptOnZarry.removeAt(j);
+						bRemoveData = TRUE;
+						break;
 					}
-					bRemoveData = TRUE;
-					break;
+					else if (!vec1.isParallelTo(vec2, tol))
+					{
+						continue;
+					}
+					else if (line3d1.isOn(ptEnd2, tol)
+						&& line3d1.isOn(ptStart2, tol))
+					{
+						ptOnZarry.removeAt(j);
+						bRemoveData = TRUE;
+						break;
+					}
+					else if (line3d2.isOn(ptStart1, tol)
+						&& line3d2.isOn(ptEnd1, tol))
+					{
+						ptOnZarry.removeAt(i);
+						bRemoveData = TRUE;
+						break;
+					}
+
+					else if (line3d1.isOn(ptStart2, tol)
+						&& !line3d1.isOn(ptEnd2, tol))
+					{
+						if (vec1.normal().isEqualTo(vec2.normal(), tol))
+						{
+							AcGeLineSeg3d lineSeg(ptStart1, ptEnd2);
+							ptOnZarry.removeAt(j);
+							ptOnZarry.removeAt(i);
+							ptOnZarry.append(lineSeg);
+							bRemoveData = TRUE;
+							break;
+						}
+						else if (vec1.normal().isParallelTo(vec2.normal(), tol))
+						{
+							AcGeLineSeg3d lineSeg(ptEnd2, ptEnd1);
+							ptOnZarry.removeAt(j);
+							ptOnZarry.removeAt(i);
+							ptOnZarry.append(lineSeg);
+							bRemoveData = TRUE;
+							break;
+						}
+						break;
+					}
+					else if (line3d1.isOn(ptEnd2, tol)
+						&& !line3d1.isOn(ptStart2, tol))
+					{
+						if (vec1.normal().isEqualTo(vec2.normal(), tol))
+						{
+							AcGeLineSeg3d lineSeg(ptStart2, ptEnd1);
+							ptOnZarry.removeAt(j);
+							ptOnZarry.removeAt(i);
+							ptOnZarry.append(lineSeg);
+							bRemoveData = TRUE;
+							break;
+						}
+						else if (vec1.normal().isParallelTo(vec2.normal(), tol))
+						{
+							AcGeLineSeg3d lineSeg(ptStart1, ptStart2);
+							ptOnZarry.removeAt(j);
+							ptOnZarry.removeAt(i);
+							ptOnZarry.append(lineSeg);
+							bRemoveData = TRUE;
+							break;
+						}
+						break;
+					}
+
+					else if (line3d2.isOn(ptStart1, tol)
+						&& !line3d2.isOn(ptEnd1, tol))
+					{
+						if (vec1.normal().isEqualTo(vec2.normal(), tol))
+						{
+							AcGeLineSeg3d lineSeg(ptStart2, ptEnd1);
+							ptOnZarry.removeAt(j);
+							ptOnZarry.removeAt(i);
+							ptOnZarry.append(lineSeg);
+							bRemoveData = TRUE;
+							break;
+						}
+						else if (vec1.normal().isParallelTo(vec2.normal(), tol))
+						{
+							AcGeLineSeg3d lineSeg(ptEnd2, ptEnd1);
+							ptOnZarry.removeAt(j);
+							ptOnZarry.removeAt(i);
+							ptOnZarry.append(lineSeg);
+							bRemoveData = TRUE;
+							break;
+						}
+						break;
+					}
+					else if (line3d2.isOn(ptEnd1, tol)
+						&& !line3d2.isOn(ptStart1, tol))
+					{
+						if (vec1.normal().isEqualTo(vec2.normal(), tol))
+						{
+							AcGeLineSeg3d lineSeg(ptStart1, ptEnd2);
+							ptOnZarry.removeAt(j);
+							ptOnZarry.removeAt(i);
+							ptOnZarry.append(lineSeg);
+							bRemoveData = TRUE;
+							break;
+						}
+						else if (vec1.normal().isParallelTo(vec2.normal(), tol))
+						{
+							AcGeLineSeg3d lineSeg(ptStart2, ptStart1);
+							ptOnZarry.removeAt(j);
+							ptOnZarry.removeAt(i);
+							ptOnZarry.append(lineSeg);
+							bRemoveData = TRUE;
+							break;
+						}
+						break;
+					}
 				}
 				if (bRemoveData)
 					break;
@@ -571,8 +624,188 @@ namespace rlArxCommonHelp
 			if (!bRemoveData)
 				break;
 		}
+	}
+
+	//删除点集中两个相邻一样的点
+	static void delNextPointIsEqual(AcGePoint3dArray& ptArry, const AcGeTol& tol = getPrjGeTol())
+	{
+		AcGePoint3dArray ptResArry;
+		int nLen = ptArry.length();
+		if (nLen < 2)
+			return;
+		AcGePoint3d ptTmp = ptArry[0];
+		ptResArry.append(ptTmp);
+		for (int i = 1; i < nLen; i++)
+		{
+			AcGePoint3d pt = ptArry[i];
+			if (pt.isEqualTo(ptTmp, tol))
+			     continue;
+			else
+			{
+				ptTmp = pt;
+				ptResArry.append(ptTmp);
+			}
+		}
+		ptArry = ptResArry;
+	}
+
+	//合并共线点
+	static void mergePolyline(AcGePoint3dArray& ptArry, const AcGeTol& tol = getPrjGeTol())
+	{
+		delNextPointIsEqual(ptArry);
+		int nLen = ptArry.length();
+		if (nLen < 3)
+			return;
+		BOOL bIsoLoop = ptArry.first().isEqualTo(ptArry.last(), tol);
+		AcArray<AcArray<AcGeLineSeg3d>> lineSegs;
+		AcGeLineSeg3d lineSeg(ptArry[0], ptArry[1]);
+
+		AcArray<AcGeLineSeg3d> lineSegArry;
+		lineSegArry.append(lineSeg);
+
+		int nEndIndex = nLen - 1;
 		if (bIsoLoop)
-			ptArry.append(ptArry.first());
+		{
+			for (int i = nLen - 1; i > 0; i--)
+			{
+				AcGePoint3d pt1 = ptArry[i];
+				AcGePoint3d pt2 = ptArry[i - 1];
+				AcGeLineSeg3d lineSegTmp(pt1, pt2);
+
+				if (lineSeg.isParallelTo(lineSegTmp, tol))
+				{
+					lineSegArry.append(lineSegTmp);
+					nEndIndex--;
+					continue;
+				}
+				break;
+			}
+		}
+		
+		for (int i = 1; i < nEndIndex; i++)
+		{
+			AcGePoint3d pt1 = ptArry[i];
+			AcGePoint3d pt2 = ptArry[i + 1];
+			AcGeLineSeg3d lineSegTmp(pt1, pt2);
+
+			if (lineSeg.isParallelTo(lineSegTmp, tol))
+			{
+				lineSegArry.append(lineSegTmp);
+			}
+			else
+			{
+				if (!lineSegArry.isEmpty())
+					lineSegs.append(lineSegArry);
+				lineSegArry.removeAll();
+				lineSeg = lineSegTmp;
+				lineSegArry.append(lineSeg);
+			}
+		}
+		if (!lineSegArry.isEmpty())
+		    lineSegs.append(lineSegArry);
+		if (lineSegs.isEmpty())
+			return;
+
+		AcGePoint3dArray vertices;
+		for (int i = 0; i < lineSegs.length(); i++)
+		{
+			mergeOnLines(lineSegs[i]);
+			assert(lineSegs[i].length() == 1);
+			vertices.append(lineSegs[i][0].startPoint());
+		}
+		vertices.append(lineSegs.last()[0].endPoint());
+		ptArry = vertices;
+// 		if (bIsoLoop)
+// 		{
+// 			AcGePoint3d pt1 = ptArry[nLen - 1];
+// 			AcGePoint3d pt2 = ptArry[nLen - 2];
+// 			AcGeVector3d vecNormal = (pt2 - pt1).normal();
+// 			while (ptArry.length() > 1)
+// 			{
+// 				pt2 = ptArry[1];
+// 				if (pt2.isEqualTo(pt1, tol))
+// 				{
+// 					ptArry.removeFirst();
+// 					ptArry.last() = ptArry.first();
+// 					continue;
+// 				}
+// 				AcGeVector3d vecNormalTmp = (pt2 - pt1).normal();
+// 				if (vecNormalTmp.isParallelTo(vecNormal, tol))
+// 				{
+// 					ptArry.removeFirst();
+// 					ptArry.last() = ptArry.first();
+// 					continue;
+// 				}
+// 				break;
+// 			}
+// 		}
+// 		if (ptArry.length() < 2)
+// 			return;
+// 		if (bIsoLoop)
+// 			ptArry.removeLast();
+// 		while (true)
+// 		{
+// 			BOOL bRemoveData = FALSE;
+// 			for (int i = 0; i < ptArry.length(); i++)
+// 			{
+// 				if (i == nLen)
+// 					i = 0;
+// 
+// 				int iStartIndex = i - 1;
+// 				if (iStartIndex < 0)
+// 					iStartIndex = ptArry.length() - 1;
+// 
+// 				int iEndIndex = i + 1;
+// 				if (iEndIndex == ptArry.length())
+// 					iEndIndex = 0;
+// 
+// 				AcGePoint3d pt1 = ptArry[iStartIndex];
+// 				AcGePoint3d pt2 = ptArry[i];
+// 				AcGePoint3d pt3 = ptArry[iEndIndex];
+// 
+// 				AcGeVector3d vec1 = (pt2 - pt1).normal();
+// 				AcGeVector3d vec2 = (pt3 - pt2).normal();
+// 				double dDist1 = pt2.distanceTo(pt1);
+// 				double dDist2 = pt2.distanceTo(pt3);
+// 
+// 
+// 				if (fabs(dDist1) < tol.equalPoint())
+// 				{
+// 					ptArry.removeAt(i);
+// 					bRemoveData = TRUE;
+// 				}
+// 				else if (fabs(dDist2) < tol.equalPoint())
+// 				{
+// 					ptArry.removeAt(iEndIndex);
+// 					bRemoveData = TRUE;
+// 				}
+// 
+// 				else if (vec1.isEqualTo(vec2, tol))
+// 				{
+// 					ptArry.removeAt(i);
+// 					bRemoveData = TRUE;
+// 					break;
+// 				}
+// 				else if (vec1.isParallelTo(vec2, tol))
+// 				{
+// 					if (fabs(dDist1 - dDist2) < EPRES || dDist1 > dDist2)
+// 						ptArry.removeAt(iEndIndex);
+// 					else
+// 					{
+// 						ptArry[iStartIndex] = ptArry[iEndIndex];
+// 						ptArry.removeAt(iEndIndex);
+// 					}
+// 					bRemoveData = TRUE;
+// 					break;
+// 				}
+// 				if (bRemoveData)
+// 					break;
+// 			}
+// 			if (!bRemoveData)
+// 				break;
+// 		}
+// 		if (bIsoLoop)
+// 			ptArry.append(ptArry.first());
 	}
 
 	//判断点是否在点集的轮廓里 0在边界上 1在内 -1在外面
@@ -699,6 +932,18 @@ namespace rlArxCommonHelp
 			break;
 		}
 		return bIsClockwise;
+	}
+
+	//判断是否逆时针
+	static bool _polygon_is_counterclockwise(const AcGePoint2dArray &vertices, AcGeVector3d vecNormal = AcGeVector3d(0, 0, 1), const AcGeTol& tol = getPrjGeTol())
+	{
+		AcGePoint3dArray ptTmpArry;
+		for (int i = 0; i < vertices.length(); i++)
+		{
+			AcGePoint2d pt = vertices[i];
+			ptTmpArry.append(AcGePoint3d(pt.x, pt.y, 0));
+		}
+		return _polygon_is_counterclockwise(ptTmpArry, vecNormal, tol);
 	}
 
 	//将点往外扩dDist的距离
