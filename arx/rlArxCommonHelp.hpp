@@ -138,6 +138,22 @@ namespace rlArxCommonHelp
 		const AcGeMatrix3d& getNewUcsMat() { return m_Newmat; }
 	};
 
+	class  IcWorkDataBase
+	{
+	protected:
+		AcDbDatabase *m_pOldPdb;
+	public:
+		IcWorkDataBase(AcDbDatabase *pDb = NULL, bool bPrompt = false)
+		{
+			m_pOldPdb = acdbCurDwg();
+			acdbHostApplicationServices()->setWorkingDatabase(pDb);
+		}
+		~IcWorkDataBase()
+		{
+			acdbHostApplicationServices()->setWorkingDatabase(m_pOldPdb);
+		}
+	};
+
 	static bool floatIsEqual(double d1, double d2)
 	{
 		if (fabs(d1 - d2) < EPRES)
@@ -146,33 +162,33 @@ namespace rlArxCommonHelp
 	}
 
 	//½ØÈ¡×Ö·û´®
-	static BOOL splitStr(AcArray<std::wstring>& strArry,const std::wstring& wstr, std::wstring str)
+	static BOOL splitStr(AcArray<std::wstring>& strArry, const std::wstring& strRes, const std::wstring& strSplit)
 	{
 		strArry.removeAll();
-		if (wstr.empty())
+		if (strRes.empty())
 			return FALSE;
-		if (str.empty())
+		if (strSplit.empty())
 		{
-			strArry.append(wstr);
+			strArry.append(strRes);
 			return TRUE;
 		}
 		int nIndexTmp = 0;
-		int nIndex = (int)wstr.find(str, nIndexTmp);
+		int nIndex = (int)strRes.find(strSplit, nIndexTmp);
 		if (nIndex < 0)
 		{
-			strArry.append(wstr);
+			strArry.append(strRes);
 			return TRUE;
 		}
 		std::wstring str1;
 		while (nIndex >= 0)
 		{
-			str1 = wstr.substr(nIndexTmp, nIndex - nIndexTmp);
+			str1 = strRes.substr(nIndexTmp, nIndex - nIndexTmp);
 			if (!str1.empty())
 				strArry.append(str1);
-			nIndexTmp = nIndex + (int)str.length();
-			nIndex = (int)wstr.find(str, nIndexTmp);
+			nIndexTmp = nIndex + (int)strSplit.length();
+			nIndex = (int)strRes.find(strSplit, nIndexTmp);
 		}
-		str1 = wstr.substr(nIndexTmp, (int)wstr.length() - nIndexTmp);
+		str1 = strRes.substr(nIndexTmp, (int)strRes.length() - nIndexTmp);
 		if (!str1.empty())
 			strArry.append(str1);
 		return !strArry.isEmpty();
@@ -210,6 +226,38 @@ namespace rlArxCommonHelp
 #else
 		return str;
 #endif
+	}
+
+	static void replace(std::wstring& strDim,const std::string& str1,const std::string& str2)
+	{
+		std::string strText = rlArxCommonHelp::getStringFromWString(strDim);
+		if (strText.empty())
+			return;
+
+		int length = (int)strText.size();
+		int i = 0, j = length - 1;
+
+		while (i < length && isspace(strText[i]))
+		{
+			i++;
+		}
+
+		while (j >= 0 && isspace(strText[j]))
+		{
+			j--;
+		}
+
+		if (j < i)
+			strText.clear();
+		else
+			strText = strText.substr(i, j - i + 1);
+		int iNdex = (int)strText.find(str1);
+		while (iNdex >= 0)
+		{
+			strText.replace(iNdex, 2, str2);
+			iNdex = (int)strText.find(str1);
+		}
+		strDim = rlArxCommonHelp::getWStringFromString(strText);
 	}
 
 	static AcGeTol getPrjGeTol()
@@ -1121,7 +1169,7 @@ namespace rlArxCommonHelp
 		return pSolid;
 	}
 
-		static AcDb3dSolid* get3dSolid(const AcGePoint3dArray& ptArry1, const AcGePoint3dArray& ptArry2,
+	static AcDb3dSolid* get3dSolid(const AcGePoint3dArray& ptArry1, const AcGePoint3dArray& ptArry2,
 			AcGePoint3dArray ptPathArry, double dFacebAccer = 0.0, double dPathAccer = 0.0)
 	{
 		double dAngle = 0.0;
